@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"regexp"
+	"strings"
 
 	"github.com/gorilla/mux"
 )
@@ -54,7 +55,7 @@ func GetOneFromServer(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	key := params["Id"]
 	for _, produceItem := range ProduceStore {
-		if produceItem.ProduceCode == key {
+		if strings.ToLower(produceItem.ProduceCode) == strings.ToLower(key) {
 			json.NewEncoder(w).Encode(produceItem)
 			w.WriteHeader(http.StatusOK)
 			return
@@ -74,7 +75,7 @@ func DeleteFromServer(w http.ResponseWriter, r *http.Request) {
 	for index, produceItem := range ProduceStore {
 		// if our id path parameter matches one of our
 		// produceItems
-		if produceItem.ProduceCode == key {
+		if strings.ToLower(produceItem.ProduceCode) == strings.ToLower(key) {
 			// updates our produceItems array to remove the produceItem
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(produceItem)
@@ -115,7 +116,7 @@ func AddToServer(w http.ResponseWriter, r *http.Request) {
 				// our new Article
 				found := false
 				for i := 0; i < len(ProduceStore); i++ {
-					if ProduceStore[i].ProduceCode == produceItem.ProduceCode {
+					if strings.ToLower(ProduceStore[i].ProduceCode) == strings.ToLower(produceItem.ProduceCode) {
 						ProduceStore[i].Name = produceItem.Name
 						ProduceStore[i].UnitPrice = produceItem.UnitPrice
 						found = true
