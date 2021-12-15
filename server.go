@@ -39,8 +39,8 @@ func HelloServer(w http.ResponseWriter, r *http.Request) {
 
 func GetAllFromServer(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		fmt.Fprintf(w, "Wrong Method %v used", r.Method)
 		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "Wrong Method %v used", r.Method)
 		return
 	}
 	json.NewEncoder(w).Encode(ProduceStore)
@@ -48,16 +48,16 @@ func GetAllFromServer(w http.ResponseWriter, r *http.Request) {
 
 func GetOneFromServer(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		fmt.Fprintf(w, "Wrong Method %v used", r.Method)
 		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "Wrong Method %v used", r.Method)
 		return
 	}
 	params := mux.Vars(r)
 	key := params["Id"]
 	for _, produceItem := range ProduceStore {
 		if strings.ToLower(produceItem.ProduceCode) == strings.ToLower(key) {
-			json.NewEncoder(w).Encode(produceItem)
 			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(produceItem)
 			return
 		}
 	}
@@ -66,8 +66,8 @@ func GetOneFromServer(w http.ResponseWriter, r *http.Request) {
 
 func DeleteFromServer(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodDelete && r.Method != http.MethodGet {
-		fmt.Fprintf(w, "Wrong Method %v used ", r.Method)
 		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "Wrong Method %v used ", r.Method)
 		return
 	}
 	params := mux.Vars(r)
@@ -92,9 +92,7 @@ func AddToServer(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	w.WriteHeader(http.StatusBadRequest)
 	reqBody, _ := ioutil.ReadAll(r.Body)
-	fmt.Fprintf(w, "%+v", string(reqBody))
 	var produceItem DataStruct
 	json.Unmarshal(reqBody, &produceItem)
 	// regex to match desired product code
@@ -107,9 +105,8 @@ func AddToServer(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 	} else {
 		if match2 == false {
-			fmt.Println("Unit Price requires two decimal, and must be a float")
-			log.Println("unit price code wrong", match2)
 			w.WriteHeader(http.StatusBadRequest)
+			fmt.Println("Unit Price requires two digits after the decimal, and must be a float")
 		} else {
 			if produceItem.Name != "" && produceItem.UnitPrice != "" {
 				// update our global Articles array to include
@@ -119,6 +116,7 @@ func AddToServer(w http.ResponseWriter, r *http.Request) {
 					if strings.ToLower(ProduceStore[i].ProduceCode) == strings.ToLower(produceItem.ProduceCode) {
 						ProduceStore[i].Name = produceItem.Name
 						ProduceStore[i].UnitPrice = produceItem.UnitPrice
+						//json.NewEncoder(w).Encode(produceItem)
 						found = true
 						break
 					}
@@ -126,9 +124,11 @@ func AddToServer(w http.ResponseWriter, r *http.Request) {
 				}
 				if !found {
 					ProduceStore = append(ProduceStore, produceItem)
-					w.WriteHeader(http.StatusOK)
+					w.WriteHeader(http.StatusCreated)
+					//json.NewEncoder(w).Encode(produceItem)
 				}
 			}
 		}
 	}
+	fmt.Fprintf(w, "%+v", string(reqBody))
 }
