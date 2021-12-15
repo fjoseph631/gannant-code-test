@@ -12,7 +12,8 @@ import (
 
 func TestCreateEntry(t *testing.T) {
 
-	var jsonStr = []byte(`{"ProduceCode":"upup-down-left-righ", "UnitPrice": "3.90", "Name": "name"}`)
+	// correctly built
+	var jsonStr = []byte(`{"ProduceCode":"upup-down-left-righ", "UnitPrice": 3.90, "Name": "name"}`)
 
 	req, err := http.NewRequest("POST", "/addItem", bytes.NewBuffer(jsonStr))
 	if err != nil {
@@ -27,7 +28,8 @@ func TestCreateEntry(t *testing.T) {
 			status, http.StatusCreated)
 	}
 
-	jsonStr = []byte(`{"ProduceCode":"1234-5678-1234-5678", "UnitPrice": "3.90", "Name": "name"}`)
+	// correctly built
+	jsonStr = []byte(`{"ProduceCode":"1234-5678-1234-5678", "UnitPrice": 3.90, "Name": "name"}`)
 	req, err = http.NewRequest("POST", "/addItem", bytes.NewBuffer(jsonStr))
 	if err != nil {
 		t.Fatal(err)
@@ -41,7 +43,38 @@ func TestCreateEntry(t *testing.T) {
 			status, http.StatusCreated)
 	}
 
-	jsonStr = []byte(`{"ProduceCode":"jan-ken-ro", "UnitPrice": "3.90", "Name": "name"}`)
+	// produce code fails regex
+	jsonStr = []byte(`{"ProduceCode":"jan-ken-ro", "UnitPrice": 3.90, "Name": "name"}`)
+	req, err = http.NewRequest("POST", "/addItem", bytes.NewBuffer(jsonStr))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	rr = httptest.NewRecorder()
+	handler = http.HandlerFunc(AddToServer)
+	handler.ServeHTTP(rr, req)
+	if status := rr.Code; status != http.StatusBadRequest {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusBadRequest)
+	}
+
+	// invalid unit price
+	jsonStr = []byte(`{"ProduceCode":"1234-5678-1234-5678", "UnitPrice": "3.90", "Name": "name"}`)
+	req, err = http.NewRequest("POST", "/addItem", bytes.NewBuffer(jsonStr))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	rr = httptest.NewRecorder()
+	handler = http.HandlerFunc(AddToServer)
+	handler.ServeHTTP(rr, req)
+	if status := rr.Code; status != http.StatusBadRequest {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusBadRequest)
+	}
+
+	// invalid name
+	jsonStr = []byte(`{"ProduceCode":"1234-5678-1234-5678", "UnitPrice": "3.90", "Name": }`)
 	req, err = http.NewRequest("POST", "/addItem", bytes.NewBuffer(jsonStr))
 	if err != nil {
 		t.Fatal(err)
@@ -57,7 +90,7 @@ func TestCreateEntry(t *testing.T) {
 }
 
 func TestGetEntry(t *testing.T) {
-
+	// get item that does exist
 	var jsonStr = []byte(``)
 	req, err := http.NewRequest("GET", "/item/upup-down-left-righ", bytes.NewBuffer(jsonStr))
 	if err != nil {
@@ -69,7 +102,6 @@ func TestGetEntry(t *testing.T) {
 	vars := map[string]string{
 		"Id": "upup-down-left-righ",
 	}
-
 	req = mux.SetURLVars(req, vars)
 	handler := http.HandlerFunc(GetOneFromServer)
 	handler.ServeHTTP(rr, req)
@@ -80,13 +112,14 @@ func TestGetEntry(t *testing.T) {
 	var testItem DataStruct
 	json.Unmarshal(rr.Body.Bytes(), &testItem)
 	var expectedItem DataStruct
-	var expectedStr = []byte(`{"ProduceCode":"upup-down-left-righ","Name":"name","UnitPrice":"3.90"}`)
+	var expectedStr = []byte(`{"ProduceCode":"upup-down-left-righ","Name":"name","UnitPrice":3.90}`)
 	json.Unmarshal(expectedStr, &expectedItem)
 	if testItem != expectedItem {
 		t.Errorf("handler returned unexpected body: got %v want %v",
 			testItem, expectedItem)
 	}
 
+	// get item that does not exist
 	req, err = http.NewRequest("GET", "/item/450", bytes.NewBuffer(jsonStr))
 	if err != nil {
 		t.Fatal(err)
@@ -103,14 +136,9 @@ func TestGetEntry(t *testing.T) {
 		t.Errorf("handler returned wrong status code: got %v want %v",
 			status, http.StatusNotFound)
 	}
-	json.Unmarshal(rr.Body.Bytes(), &testItem)
-	expectedStr = []byte(`{"ProduceCode":"upup-down-left-righ","Name":"name","UnitPrice":"3.90"}`)
-	json.Unmarshal(expectedStr, &expectedItem)
-	if testItem != expectedItem {
-		t.Errorf("handler returned unexpected body: got %v want %v",
-			testItem, expectedItem)
-	}
 }
+
+// test to get all entries in database
 func TestGetAllEntries(t *testing.T) {
 
 	var jsonStr = []byte(``)
@@ -137,7 +165,7 @@ func TestGetAllEntries(t *testing.T) {
 	}
 }
 
-// tests one correct, one incorrected, and one with wrong type entirely
+// tests one correct case, one incorrect case, and one with wrong request type
 func TestDeleteEntries(t *testing.T) {
 	var jsonStr = []byte(`{"ProduceCode":"upup-down-left-righ", "UnitPrice": "3.90", "Name": "name"}`)
 
@@ -167,8 +195,7 @@ func TestDeleteEntries(t *testing.T) {
 			testItem, expectedItem)
 	}
 
-	jsonStr = []byte(`{"ProduceCode":"upup-down-left-righ", "UnitPrice": "3.90", "Name": "name"}`)
-	req, err = http.NewRequest("Delete", "/delete/what-is-the-greatest-number-ever", bytes.NewBuffer(jsonStr))
+	req, err = http.NewRequest("Delete", "/delete/what-is-the-greatest-number-ever", bytes.NewBuffer(expectedStr))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -190,7 +217,7 @@ func TestDeleteEntries(t *testing.T) {
 			rr.Body.String(), expected)
 	}
 
-	req, err = http.NewRequest("POST", "/delete/what-is-the-greatest-number-ever", bytes.NewBuffer(jsonStr))
+	req, err = http.NewRequest("POST", "/delete/what-is-the-greatest-number-ever", bytes.NewBuffer(expectedStr))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -206,12 +233,10 @@ func TestDeleteEntries(t *testing.T) {
 		t.Errorf("handler returned wrong status code: got %v want %v",
 			status, http.StatusOK)
 	}
-
 	json.Unmarshal(rr.Body.Bytes(), &testItem)
 	expectedStr = []byte(`[{"ProduceCode":"upup-down-left-righ","Name":"name","UnitPrice":"3.90"},{"ProduceCode":"1234-5678-1234-5678","Name":"name","UnitPrice":"3.90"}]`)
 	expected = `Wrong Method POST used `
 	json.Unmarshal(expectedStr, &expectedItem)
-
 	if rr.Body.String() != expected {
 		t.Errorf("handler returned unexpected body: got %v want %v",
 			rr.Body.String(), expected)
