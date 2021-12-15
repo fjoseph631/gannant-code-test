@@ -26,11 +26,6 @@ func TestCreateEntry(t *testing.T) {
 		t.Errorf("handler returned wrong status code: got %v want %v",
 			status, http.StatusCreated)
 	}
-	expected := `{"ProduceCode":"upup-down-left-righ", "UnitPrice": "3.90", "Name": "name"}`
-	if rr.Body.String() != expected {
-		t.Errorf("handler returned unexpected body: got %v want %v",
-			rr.Body.String(), expected)
-	}
 
 	jsonStr = []byte(`{"ProduceCode":"1234-5678-1234-5678", "UnitPrice": "3.90", "Name": "name"}`)
 	req, err = http.NewRequest("POST", "/addItem", bytes.NewBuffer(jsonStr))
@@ -45,11 +40,6 @@ func TestCreateEntry(t *testing.T) {
 		t.Errorf("handler returned wrong status code: got %v want %v",
 			status, http.StatusCreated)
 	}
-	expected = `{"ProduceCode":"1234-5678-1234-5678", "UnitPrice": "3.90", "Name": "name"}`
-	if rr.Body.String() != expected {
-		t.Errorf("handler returned unexpected body: got %v want %v",
-			rr.Body.String(), expected)
-	}
 
 	jsonStr = []byte(`{"ProduceCode":"jan-ken-ro", "UnitPrice": "3.90", "Name": "name"}`)
 	req, err = http.NewRequest("POST", "/addItem", bytes.NewBuffer(jsonStr))
@@ -63,11 +53,6 @@ func TestCreateEntry(t *testing.T) {
 	if status := rr.Code; status != http.StatusBadRequest {
 		t.Errorf("handler returned wrong status code: got %v want %v",
 			status, http.StatusBadRequest)
-	}
-	expected = `{"ProduceCode":"jan-ken-ro", "UnitPrice": "3.90", "Name": "name"}`
-	if rr.Body.String() != expected {
-		t.Errorf("handler returned unexpected body: got %v want %v",
-			rr.Body.String(), expected)
 	}
 }
 
@@ -172,7 +157,7 @@ func TestDeleteEntries(t *testing.T) {
 		t.Errorf("handler returned wrong status code: got %v want %v",
 			status, http.StatusOK)
 	}
-	expectedStr := []byte(`{"ProduceCode":"upup-down-left-righ","Name":"name","UnitPrice":"3.90"}`)
+	expectedStr := []byte(`{ }`)
 	var testItem DataStruct
 	json.Unmarshal(rr.Body.Bytes(), &testItem)
 	var expectedItem DataStruct

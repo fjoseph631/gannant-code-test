@@ -65,7 +65,7 @@ func GetOneFromServer(w http.ResponseWriter, r *http.Request) {
 }
 
 func DeleteFromServer(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodDelete && r.Method != http.MethodGet {
+	if r.Method != http.MethodDelete {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "Wrong Method %v used ", r.Method)
 		return
@@ -78,7 +78,6 @@ func DeleteFromServer(w http.ResponseWriter, r *http.Request) {
 		if strings.ToLower(produceItem.ProduceCode) == strings.ToLower(key) {
 			// updates our produceItems array to remove the produceItem
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(produceItem)
 			ProduceStore = append(ProduceStore[:index], ProduceStore[index+1:]...)
 			return
 		}
@@ -92,6 +91,7 @@ func AddToServer(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+
 	reqBody, _ := ioutil.ReadAll(r.Body)
 	var produceItem DataStruct
 	json.Unmarshal(reqBody, &produceItem)
@@ -116,7 +116,6 @@ func AddToServer(w http.ResponseWriter, r *http.Request) {
 					if strings.ToLower(ProduceStore[i].ProduceCode) == strings.ToLower(produceItem.ProduceCode) {
 						ProduceStore[i].Name = produceItem.Name
 						ProduceStore[i].UnitPrice = produceItem.UnitPrice
-						//json.NewEncoder(w).Encode(produceItem)
 						found = true
 						break
 					}
@@ -125,10 +124,8 @@ func AddToServer(w http.ResponseWriter, r *http.Request) {
 				if !found {
 					ProduceStore = append(ProduceStore, produceItem)
 					w.WriteHeader(http.StatusCreated)
-					//json.NewEncoder(w).Encode(produceItem)
 				}
 			}
 		}
 	}
-	fmt.Fprintf(w, "%+v", string(reqBody))
 }
