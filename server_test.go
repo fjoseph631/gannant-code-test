@@ -22,9 +22,9 @@ func TestCreateEntry(t *testing.T) {
 	rr := httptest.NewRecorder()
 	handler := http.HandlerFunc(AddToServer)
 	handler.ServeHTTP(rr, req)
-	if status := rr.Code; status != http.StatusBadRequest {
+	if status := rr.Code; status != http.StatusCreated {
 		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusBadRequest)
+			status, http.StatusCreated)
 	}
 	expected := `{"ProduceCode":"upup-down-left-righ", "UnitPrice": "3.90", "Name": "name"}`
 	if rr.Body.String() != expected {
@@ -41,9 +41,9 @@ func TestCreateEntry(t *testing.T) {
 	rr = httptest.NewRecorder()
 	handler = http.HandlerFunc(AddToServer)
 	handler.ServeHTTP(rr, req)
-	if status := rr.Code; status != http.StatusBadRequest {
+	if status := rr.Code; status != http.StatusCreated {
 		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusBadRequest)
+			status, http.StatusCreated)
 	}
 	expected = `{"ProduceCode":"1234-5678-1234-5678", "UnitPrice": "3.90", "Name": "name"}`
 	if rr.Body.String() != expected {
@@ -195,7 +195,7 @@ func TestDeleteEntries(t *testing.T) {
 	req = mux.SetURLVars(req, vars)
 	handler = http.HandlerFunc(DeleteFromServer)
 	handler.ServeHTTP(rr, req)
-	if status := rr.Code; status != http.StatusOK {
+	if status := rr.Code; status != http.StatusBadRequest {
 		t.Errorf("handler returned wrong status code: got %v want %v",
 			status, http.StatusOK)
 	}
@@ -217,7 +217,7 @@ func TestDeleteEntries(t *testing.T) {
 	req = mux.SetURLVars(req, vars)
 	handler = http.HandlerFunc(DeleteFromServer)
 	handler.ServeHTTP(rr, req)
-	if status := rr.Code; status != http.StatusOK {
+	if status := rr.Code; status != http.StatusBadRequest {
 		t.Errorf("handler returned wrong status code: got %v want %v",
 			status, http.StatusOK)
 	}
