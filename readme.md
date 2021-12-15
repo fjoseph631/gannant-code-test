@@ -1,5 +1,21 @@
+Usage Routes 
+   Server Will be listening on port 8080
+   Add Produce Item - /addItem
+   Delete Produce Item - /delete/{produce-code}
+   Get Single Produce Item - /item/{produce-code}
+   Get All Produce Items - /items
+
+Installation and Startup
+   Build dockerfile 'docker build . -t your-container-tag'
+   docker run your-container-tag --name your-container-name
+   It should be 172.17.0.2 because that may be the default
+   If is's not Ip address can be retrieved by docker inspect `container name`, and from there it should be in network settings
+
+Routes
+   /item
 Add Items
    Requires DataStruct, Return nothing, response code 201 if successful, code 400 if request was invalid
+   Unit Price is optional
    Example Command
       curl -i --header "Content-Type: application/json"   --request POST   --data '{"produceCode":"upup-down-left-righ", "UnitPrice": "3.45", "Name":"Name"}' localhost:8080/addItem
 
