@@ -7,15 +7,16 @@ import (
 	"log"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/gorilla/mux"
 )
 
 type DataStruct struct {
-	ProduceCode string `json:"ProduceCode"`
-	Name        string `json:"Name"`
-	UnitPrice   string `json:"UnitPrice"`
+	ProduceCode string  `json:"ProduceCode"`
+	Name        string  `json:"Name"`
+	UnitPrice   float64 `json:"UnitPrice"`
 }
 
 var ProduceStore []DataStruct
@@ -95,37 +96,32 @@ func AddToServer(w http.ResponseWriter, r *http.Request) {
 	reqBody, _ := ioutil.ReadAll(r.Body)
 	var produceItem DataStruct
 	json.Unmarshal(reqBody, &produceItem)
+	strconv.FormatFloat(produceItem.UnitPrice, 'f', 2, 32)
 	// regex to match desired product code
 	re, _ := regexp.Compile("[a-zA-Z0-9][a-zA-Z0-9][a-zA-Z0-9][a-zA-Z0-9]-[a-zA-Z0-9][a-zA-Z0-9][a-zA-Z0-9][a-zA-Z0-9]-[a-zA-Z0-9][a-zA-Z0-9][a-zA-Z0-9][a-zA-Z0-9]-[a-zA-Z0-9][a-zA-Z0-9][a-zA-Z0-9][a-zA-Z0-9]")
-	// this would allow for one digit after place, but couldn't find a regex to achieve that
-	re2, _ := regexp.Compile(`\d+\.\d{2}`)
 	match := re.MatchString(produceItem.ProduceCode)
-	match2 := re2.MatchString(produceItem.UnitPrice)
 	if match == false {
 		w.WriteHeader(http.StatusBadRequest)
 	} else {
-		if match2 == false {
-			w.WriteHeader(http.StatusBadRequest)
-			fmt.Println("Unit Price requires two digits after the decimal, and must be a float")
-		} else {
-			if produceItem.Name != "" && produceItem.UnitPrice != "" {
-				// update our global Articles array to include
-				// our new Article
-				found := false
-				for i := 0; i < len(ProduceStore); i++ {
-					if strings.ToLower(ProduceStore[i].ProduceCode) == strings.ToLower(produceItem.ProduceCode) {
-						ProduceStore[i].Name = produceItem.Name
-						ProduceStore[i].UnitPrice = produceItem.UnitPrice
-						found = true
-						break
-					}
+		// Default Price of 0.0 should be rejected
+		if produceItem.Name != "" && produceItem.UnitPrice > 0.0 {
+			// update global produce store
+			found := false
+			for i := 0; i < len(ProduceStore); i++ {
+				if strings.ToLower(ProduceStore[i].ProduceCode) == strings.ToLower(produceItem.ProduceCode) {
+					ProduceStore[i].Name = produceItem.Name
+					ProduceStore[i].UnitPrice = produceItem.UnitPrice
+					found = true
+					break
+				}
 
-				}
-				if !found {
-					ProduceStore = append(ProduceStore, produceItem)
-					w.WriteHeader(http.StatusCreated)
-				}
 			}
+			if !found {
+				ProduceStore = append(ProduceStore, produceItem)
+				w.WriteHeader(http.StatusCreated)
+			}
+		} else {
+			w.WriteHeader(http.StatusBadRequest)
 		}
 	}
 }
