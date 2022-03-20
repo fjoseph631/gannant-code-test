@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gorilla/mux"
 )
 
 type DataStruct struct {
@@ -18,24 +17,47 @@ type DataStruct struct {
 	Name        string  `json:"Name"`
 	UnitPrice   float64 `json:"UnitPrice"`
 }
-
-var ProduceStore []DataStruct
+type IdStruct struct {
+	Id string  `json:"Id"`
+}
+//var ProduceStore []DataStruct
+var ProduceStore = make(map[string]DataStruct)
+var re, errRe = regexp.Compile("[a-zA-Z0-9][a-zA-Z0-9][a-zA-Z0-9][a-zA-Z0-9]-[a-zA-Z0-9][a-zA-Z0-9][a-zA-Z0-9][a-zA-Z0-9]-[a-zA-Z0-9][a-zA-Z0-9][a-zA-Z0-9][a-zA-Z0-9]-[a-zA-Z0-9][a-zA-Z0-9][a-zA-Z0-9][a-zA-Z0-9]")
 
 func main() {
 
-	router := mux.NewRouter()
-	router.HandleFunc("/", HelloServer)
-	router.HandleFunc("/addItem", AddToServer)
-	router.HandleFunc("/items", GetAllFromServer)
-	router.HandleFunc("/item/{Id}", GetOneFromServer)
-	router.HandleFunc("/delete/{Id}", DeleteFromServer).Methods(http.MethodDelete, http.MethodGet)
-
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", HelloServer)
+	mux.HandleFunc("/items", HandleRequests)
 	fmt.Println("Server started at port 8080")
-	log.Fatal(http.ListenAndServe(":8080", router))
+	
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }
-
 func HelloServer(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Hello Server")
+}
+func HandleRequests(w http.ResponseWriter, r *http.Request) {
+	if r.Header.Get("content-type") != "application/json"{
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "Wrong Header Type %v used", r.Header.Values("content-type"))
+		return
+	}
+
+	switch r.Method {
+	case http.MethodGet:
+		GetAllFromServer(w,r);
+		break;
+	case http.MethodPost:
+		AddToServer(w,r);
+		break;
+	case http.MethodDelete:
+		DeleteFromServer(w,r);
+		break;
+	default:
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "Wrong Method %v used", r.Method)
+		break;
+	}
 }
 
 func GetAllFromServer(w http.ResponseWriter, r *http.Request) {
@@ -44,25 +66,24 @@ func GetAllFromServer(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Wrong Method %v used", r.Method)
 		return
 	}
-	json.NewEncoder(w).Encode(ProduceStore)
-}
-
-func GetOneFromServer(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "Wrong Method %v used", r.Method)
-		return
+		Id := r.URL.Query().Get("Id");
+	if (Id != ``){
+		produceItem, exists := ProduceStore[strings.ToLower(Id)]
+			if exists{
+				w.WriteHeader(http.StatusOK)
+				json.NewEncoder(w).Encode("Product Code: " + produceItem.ProduceCode)
+				json.NewEncoder(w).Encode("UnitPrice: " +  strconv.FormatFloat(produceItem.UnitPrice, 'f', 5, 64))
+				json.NewEncoder(w).Encode("Name: " + produceItem.Name)
+			} else {
+				fmt.Fprintf(w, "%s Not found", Id)
+				w.WriteHeader(http.StatusNotFound)
+			}
+			return;
 	}
-	params := mux.Vars(r)
-	key := params["Id"]
-	for _, produceItem := range ProduceStore {
-		if strings.ToLower(produceItem.ProduceCode) == strings.ToLower(key) {
-			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(produceItem)
-			return
-		}
+	for _, v := range ProduceStore {
+		json.NewEncoder(w).Encode(v)
 	}
-	w.WriteHeader(http.StatusNotFound)
+	w.WriteHeader(http.StatusOK)
 }
 
 func DeleteFromServer(w http.ResponseWriter, r *http.Request) {
@@ -71,19 +92,20 @@ func DeleteFromServer(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Wrong Method %v used ", r.Method)
 		return
 	}
-	params := mux.Vars(r)
-	key := params["Id"]
-	for index, produceItem := range ProduceStore {
-		// if our id path parameter matches one of our
-		// produceItems
-		if strings.ToLower(produceItem.ProduceCode) == strings.ToLower(key) {
-			// updates our produceItems array to remove the produceItem
-			w.WriteHeader(http.StatusOK)
-			ProduceStore = append(ProduceStore[:index], ProduceStore[index+1:]...)
-			return
-		}
+	Id := r.URL.Query().Get("Id");
+	// if our id path parameter matches one of our
+	// produceItems
+	_, exists := ProduceStore[strings.ToLower(Id)]
+	if exists{
+		fmt.Fprintf(w, "Deleted %s", Id);
+		w.WriteHeader(202)
+		delete(ProduceStore, Id) 
+	} else
+	{
+		fmt.Fprintf(w, "%s not found", Id)
+		w.WriteHeader(http.StatusNotFound)
 	}
-	w.WriteHeader(http.StatusNotFound)
+	
 }
 
 func AddToServer(w http.ResponseWriter, r *http.Request) {
@@ -92,36 +114,49 @@ func AddToServer(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-
-	reqBody, _ := ioutil.ReadAll(r.Body)
+	reqBody, err := ioutil.ReadAll(r.Body)
+	if err != nil{
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "Read all failed %v", err)
+		return;
+	}
 	var produceItem DataStruct
-	json.Unmarshal(reqBody, &produceItem)
+	err = json.Unmarshal(reqBody, &produceItem)
+	if err != nil{
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "Json unmarshal failed %v", err)
+		return;
+	}
 	strconv.FormatFloat(produceItem.UnitPrice, 'f', 2, 32)
 	// regex to match desired product code
-	re, _ := regexp.Compile("[a-zA-Z0-9][a-zA-Z0-9][a-zA-Z0-9][a-zA-Z0-9]-[a-zA-Z0-9][a-zA-Z0-9][a-zA-Z0-9][a-zA-Z0-9]-[a-zA-Z0-9][a-zA-Z0-9][a-zA-Z0-9][a-zA-Z0-9]-[a-zA-Z0-9][a-zA-Z0-9][a-zA-Z0-9][a-zA-Z0-9]")
+	if errRe != nil{
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "Read all failed %s", err)
+		return;
+	}
 	match := re.MatchString(produceItem.ProduceCode)
 	if match == false {
 		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "Produce Code %s does not match required regex", produceItem.ProduceCode);
+		return;
 	} else {
 		// Default Price of 0.0 should be rejected
 		if produceItem.Name != "" && produceItem.UnitPrice > 0.0 {
 			// update global produce store
-			found := false
-			for i := 0; i < len(ProduceStore); i++ {
-				if strings.ToLower(ProduceStore[i].ProduceCode) == strings.ToLower(produceItem.ProduceCode) {
-					ProduceStore[i].Name = produceItem.Name
-					ProduceStore[i].UnitPrice = produceItem.UnitPrice
-					found = true
-					break
-				}
-
-			}
-			if !found {
-				ProduceStore = append(ProduceStore, produceItem)
+			_, exists := ProduceStore[strings.ToLower(produceItem.ProduceCode)]
+			if exists{
+				fmt.Fprintf(w, "Already exists in store, updating with new value");
+			} else
+			{
 				w.WriteHeader(http.StatusCreated)
+				fmt.Fprintf(w, "Added %s to store", produceItem.ProduceCode)
 			}
-		} else {
+			ProduceStore[strings.ToLower(produceItem.ProduceCode)] = produceItem;
+		}else
+		{
 			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintf(w, "Item was invalid");
 		}
 	}
+
 }

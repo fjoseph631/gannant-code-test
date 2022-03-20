@@ -2,243 +2,114 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-
-	"github.com/gorilla/mux"
 )
+type baseTest struct {
+	name string
+	input string
+	id string
+	expected string
+	requestType string
+	status int
+	header string
+	queryKey string
+	queryValue string
+    data DataStruct
 
-func TestCreateEntry(t *testing.T) {
-
-	// correctly built
-	var jsonStr = []byte(`{"ProduceCode":"upup-down-left-righ", "UnitPrice": 3.90, "Name": "name"}`)
-
-	req, err := http.NewRequest("POST", "/addItem", bytes.NewBuffer(jsonStr))
-	if err != nil {
-		t.Fatal(err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(AddToServer)
-	handler.ServeHTTP(rr, req)
-	if status := rr.Code; status != http.StatusCreated {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusCreated)
-	}
-
-	// correctly built
-	jsonStr = []byte(`{"ProduceCode":"1234-5678-1234-5678", "UnitPrice": 3.90, "Name": "name"}`)
-	req, err = http.NewRequest("POST", "/addItem", bytes.NewBuffer(jsonStr))
-	if err != nil {
-		t.Fatal(err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	rr = httptest.NewRecorder()
-	handler = http.HandlerFunc(AddToServer)
-	handler.ServeHTTP(rr, req)
-	if status := rr.Code; status != http.StatusCreated {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusCreated)
-	}
-
-	// produce code fails regex
-	jsonStr = []byte(`{"ProduceCode":"jan-ken-ro", "UnitPrice": 3.90, "Name": "name"}`)
-	req, err = http.NewRequest("POST", "/addItem", bytes.NewBuffer(jsonStr))
-	if err != nil {
-		t.Fatal(err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	rr = httptest.NewRecorder()
-	handler = http.HandlerFunc(AddToServer)
-	handler.ServeHTTP(rr, req)
-	if status := rr.Code; status != http.StatusBadRequest {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusBadRequest)
-	}
-
-	// invalid unit price
-	jsonStr = []byte(`{"ProduceCode":"1234-5678-1234-5678", "UnitPrice": "3.90", "Name": "name"}`)
-	req, err = http.NewRequest("POST", "/addItem", bytes.NewBuffer(jsonStr))
-	if err != nil {
-		t.Fatal(err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	rr = httptest.NewRecorder()
-	handler = http.HandlerFunc(AddToServer)
-	handler.ServeHTTP(rr, req)
-	if status := rr.Code; status != http.StatusBadRequest {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusBadRequest)
-	}
-
-	// invalid name
-	jsonStr = []byte(`{"ProduceCode":"1234-5678-1234-5678", "UnitPrice": "3.90", "Name": }`)
-	req, err = http.NewRequest("POST", "/addItem", bytes.NewBuffer(jsonStr))
-	if err != nil {
-		t.Fatal(err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	rr = httptest.NewRecorder()
-	handler = http.HandlerFunc(AddToServer)
-	handler.ServeHTTP(rr, req)
-	if status := rr.Code; status != http.StatusBadRequest {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusBadRequest)
-	}
 }
-
-func TestGetEntry(t *testing.T) {
-	// get item that does exist
-	var jsonStr = []byte(``)
-	req, err := http.NewRequest("GET", "/item/upup-down-left-righ", bytes.NewBuffer(jsonStr))
-	if err != nil {
-		t.Fatal(err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	rr := httptest.NewRecorder()
-	//Hack to try to fake gorilla/mux vars
-	vars := map[string]string{
-		"Id": "upup-down-left-righ",
-	}
-	req = mux.SetURLVars(req, vars)
-	handler := http.HandlerFunc(GetOneFromServer)
-	handler.ServeHTTP(rr, req)
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
-	}
-	var testItem DataStruct
-	json.Unmarshal(rr.Body.Bytes(), &testItem)
-	var expectedItem DataStruct
-	var expectedStr = []byte(`{"ProduceCode":"upup-down-left-righ","Name":"name","UnitPrice":3.90}`)
-	json.Unmarshal(expectedStr, &expectedItem)
-	if testItem != expectedItem {
-		t.Errorf("handler returned unexpected body: got %v want %v",
-			testItem, expectedItem)
-	}
-
-	// get item that does not exist
-	req, err = http.NewRequest("GET", "/item/450", bytes.NewBuffer(jsonStr))
-	if err != nil {
-		t.Fatal(err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	rr = httptest.NewRecorder()
-	vars = map[string]string{
-		"Id": "450",
-	}
-	req = mux.SetURLVars(req, vars)
-	handler = http.HandlerFunc(GetOneFromServer)
-	handler.ServeHTTP(rr, req)
-	if status := rr.Code; status != http.StatusNotFound {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusNotFound)
-	}
-}
-
-// test to get all entries in database
-func TestGetAllEntries(t *testing.T) {
-
-	var jsonStr = []byte(``)
-	req, err := http.NewRequest("GET", "/items", bytes.NewBuffer(jsonStr))
-	if err != nil {
-		t.Fatal(err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(GetAllFromServer)
-	handler.ServeHTTP(rr, req)
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
-	}
-	var testItem DataStruct
-	json.Unmarshal(rr.Body.Bytes(), &testItem)
-	var expectedItem DataStruct
-	var expectedStr = []byte(`[{"ProduceCode":"upup-down-left-righ","Name":"name","UnitPrice":"3.90"},{"ProduceCode":"1234-5678-1234-5678","Name":"name","UnitPrice":"3.90"}]`)
-	json.Unmarshal(expectedStr, &expectedItem)
-	if testItem != expectedItem {
-		t.Errorf("handler returned unexpected body: got %v want %v",
-			testItem, expectedItem)
-	}
-}
-
-// tests one correct case, one incorrect case, and one with wrong request type
-func TestDeleteEntries(t *testing.T) {
-	var jsonStr = []byte(`{"ProduceCode":"upup-down-left-righ", "UnitPrice": "3.90", "Name": "name"}`)
-
-	req, err := http.NewRequest("DELETE", "/delete/upup-down-left-righ", bytes.NewBuffer(jsonStr))
-	if err != nil {
-		t.Fatal(err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	rr := httptest.NewRecorder()
-	vars := map[string]string{
-		"Id": "upup-down-left-righ",
-	}
-	req = mux.SetURLVars(req, vars)
-	handler := http.HandlerFunc(DeleteFromServer)
-	handler.ServeHTTP(rr, req)
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
-	}
-	expectedStr := []byte(`{ }`)
-	var testItem DataStruct
-	json.Unmarshal(rr.Body.Bytes(), &testItem)
-	var expectedItem DataStruct
-	json.Unmarshal(expectedStr, &expectedItem)
-	if testItem != expectedItem {
-		t.Errorf("handler returned unexpected body: got %v want %v",
-			testItem, expectedItem)
-	}
-
-	req, err = http.NewRequest("Delete", "/delete/what-is-the-greatest-number-ever", bytes.NewBuffer(expectedStr))
-	if err != nil {
-		t.Fatal(err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	rr = httptest.NewRecorder()
-	vars = map[string]string{
-		"Id": "what-is-the-greatest-number-ever",
-	}
-	req = mux.SetURLVars(req, vars)
-	handler = http.HandlerFunc(DeleteFromServer)
-	handler.ServeHTTP(rr, req)
-	if status := rr.Code; status != http.StatusBadRequest {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
-	}
-	expected := `Wrong Method Delete used `
-	if rr.Body.String() != expected {
-		t.Errorf("handler returned unexpected body: got %v want %v",
-			rr.Body.String(), expected)
-	}
-
-	req, err = http.NewRequest("POST", "/delete/what-is-the-greatest-number-ever", bytes.NewBuffer(expectedStr))
-	if err != nil {
-		t.Fatal(err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	rr = httptest.NewRecorder()
-	vars = map[string]string{
-		"Id": "what-is-the-greatest-number-ever",
-	}
-	req = mux.SetURLVars(req, vars)
-	handler = http.HandlerFunc(DeleteFromServer)
-	handler.ServeHTTP(rr, req)
-	if status := rr.Code; status != http.StatusBadRequest {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
-	}
-	json.Unmarshal(rr.Body.Bytes(), &testItem)
-	expectedStr = []byte(`[{"ProduceCode":"upup-down-left-righ","Name":"name","UnitPrice":"3.90"},{"ProduceCode":"1234-5678-1234-5678","Name":"name","UnitPrice":"3.90"}]`)
-	expected = `Wrong Method POST used `
-	json.Unmarshal(expectedStr, &expectedItem)
-	if rr.Body.String() != expected {
-		t.Errorf("handler returned unexpected body: got %v want %v",
-			rr.Body.String(), expected)
+var tests = []baseTest {
+	{
+		name:"correctly built add item request", requestType:"POST", header:"application/json",
+		expected: `Added upup-down-left-righ to store`,
+		input: `{"ProduceCode":"upup-down-left-righ", "UnitPrice": 3.90, "Name": "name"}`,
+		status: http.StatusCreated,
+		data: DataStruct {
+	
+		},	
+	},
+	{
+		name:"correctly built get request", requestType:"GET", header:"application/json",
+		expected: `{"ProduceCode":"upup-down-left-righ","Name":"name","UnitPrice":3.9}`,
+		input: ``,
+		queryKey: `Id`,
+		queryValue: `upup-downd-left-righ`,
+		status: http.StatusOK,
+		data: DataStruct {
+		},	
+	},
+	{
+		name:"correctly built get request but single item and not found", requestType:"GET", header:"application/json",
+		expected: `upup-downd-left-righ Not found`,
+		input: ``,
+		queryKey: ``,
+		queryValue: ``,
+		status: http.StatusOK,
+		data: DataStruct{
+		},	
+	},
+	{
+		name:"correctly built delete request", requestType:"DELETE", header:"application/json",
+		input: ``,
+		expected: `Deleted upup-down-down-left-righ`,
+		queryKey: `Id`,
+		queryValue: `upup-down-left-righ`,
+		status: http.StatusOK,
+		data: DataStruct {
+			ProduceCode: "upup-down-left-righ",
+			UnitPrice: 3.90,
+			Name: "name",
+		},	
+	},
+	{
+		name:"wrong header used add item", requestType:"POST", header:"plaintext",
+		expected: `Wrong Header Type [plaintext] used`,
+		input: `{"ProduceCode":"upup-down-left-righ", "UnitPrice": 3.90, "Name": "name"}`,
+		status: http.StatusBadRequest,
+		data: DataStruct {
+			ProduceCode: ``,
+			UnitPrice: 3.90,
+			Name: ``,
+		},	
+	},
+	{
+		name:"regex failed", requestType:"POST", header:"application/json",
+		input: `{"ProduceCode":"upup-downhkjh-left-righ", "UnitPrice": 3.90, "Name": "name"}`,
+		expected: "Produce Code upup-downhkjh-left-righ does not match required regex",
+		status: http.StatusBadRequest,
+		data: DataStruct {
+			ProduceCode: "",
+			UnitPrice: 0.0,
+			Name: "",
+		},	
+	},
+	{
+		name:"json unmarshal failed", requestType:"POST", header:"application/json",
+		input: `{ProduceCode":"upup-down-left-righ", "UnitPrice": 3.90, "Nae": "name"}`,
+		expected: `Deleted upup-down-down-left-righ`,
+		status: http.StatusBadRequest,
+		data: DataStruct {
+			ProduceCode: "upup-down-left-righ",
+			UnitPrice: 3.90,
+			Name: "name",
+		},	
+	}}
+func TestGet(t *testing.T) {
+    
+	for _, tc := range tests {
+		var jsonStr = []byte(tc.input)
+		req, _ := http.NewRequest(tc.requestType,"/items/"+tc.id, bytes.NewBuffer(jsonStr));
+		req.Header.Set("Content-Type", tc.header)
+		q := req.URL.Query()
+		q.Add(tc.queryKey, tc.queryValue)
+		req.URL.RawQuery = q.Encode()
+		rr := httptest.NewRecorder()
+		handler := http.HandlerFunc(HandleRequests)
+		handler.ServeHTTP(rr, req)
+		if status := rr.Code; status != tc.status {
+			t.Errorf("handler returned wrong status code: got %v want %v case %v output %v",
+				status, tc.status, tc.name, rr.Body )
+		}
 	}
 }

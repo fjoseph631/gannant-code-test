@@ -1,6 +1,6 @@
-build:
+build: test
 	go build
-test: build
+test:
 	go test
 start: build
 	./gannant-code-test
